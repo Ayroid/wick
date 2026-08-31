@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch screen shown until Flutter draws its first frame. Wick's mark
+     on the brand ground, so the app doesn't open on a bare black rectangle.
+     Android 12+ ignores this and uses the windowSplashScreen* items instead. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/ic_launcher_foreground" />
+    </item>
+</layer-list>

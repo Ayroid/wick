@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wick's cream, and deliberately NOT overridden in values-night. The
+         launch screen is brand, not chrome: it can't read the in-app theme
+         choice anyway (it paints before Flutter starts), and a dark variant
+         just means the app opens on a black rectangle for anyone whose phone
+         is in dark mode. The launcher icon is drawn against this same cream. -->
+    <color name="ic_launcher_background">#FFF8F3</color>
+    <color name="launch_background">#FFF8F3</color>
+</resources>
