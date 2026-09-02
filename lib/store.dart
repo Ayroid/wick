@@ -10,6 +10,9 @@ const _habitsKey = 'habits';
 const _themeKey = 'themeMode';
 const _momentsKey = 'moments';
 const _onboardedKey = 'onboarded';
+const _compactLayoutKey = 'compactLayout';
+const _compactDaysKey = 'compactDays';
+const _compactNamesKey = 'compactNames';
 
 /// Calendar-day key, e.g. "2026-08-30". Habits are done on a *day*, not at an
 /// instant, so days are stored as strings — no DateTime equality or timezone
@@ -293,6 +296,20 @@ class HabitStore extends ChangeNotifier {
   bool loaded = false;
   bool onboarded = false;
 
+  /// Which layout the dashboard draws: cards with contribution grids, or the
+  /// compact table. A view of the same habits either way — nothing about the
+  /// data changes with it.
+  bool compactLayout = false;
+
+  /// How many days the compact list shows, ending today. 1–7: past a week a
+  /// row stops being scannable at a glance, which is the only thing that view
+  /// is for — the contribution grid already covers the long view.
+  int compactDays = 5;
+
+  /// Whether the compact list writes habit names beside their icons. Off is
+  /// for people with more habits than fit a line.
+  bool compactNames = true;
+
   // Celebrations already shown today, so toggling a habit off and on — or just
   // reopening the app — doesn't replay the same moment.
   final Set<String> _moments = {};
@@ -311,6 +328,11 @@ class HabitStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     themeMode = ThemeMode.values[prefs.getInt(_themeKey) ?? ThemeMode.light.index];
     onboarded = prefs.getBool(_onboardedKey) ?? false;
+    // Clamped, not trusted: a hand-edited or future-written pref must not be
+    // able to ask for zero columns.
+    compactLayout = prefs.getBool(_compactLayoutKey) ?? compactLayout;
+    compactDays = (prefs.getInt(_compactDaysKey) ?? compactDays).clamp(1, 7);
+    compactNames = prefs.getBool(_compactNamesKey) ?? compactNames;
     _readMoments(prefs.getString(_momentsKey));
     final raw = prefs.getString(_habitsKey);
     if (raw != null) {
@@ -446,6 +468,28 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
     SharedPreferences.getInstance()
         .then((p) => p.setInt(_themeKey, mode.index));
+  }
+
+  void setCompactLayout(bool compact) {
+    if (compactLayout == compact) return;
+    compactLayout = compact;
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool(_compactLayoutKey, compact));
+  }
+
+  void setCompactDays(int days) {
+    compactDays = days.clamp(1, 7);
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((p) => p.setInt(_compactDaysKey, compactDays));
+  }
+
+  void setCompactNames(bool show) {
+    compactNames = show;
+    notifyListeners();
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool(_compactNamesKey, show));
   }
 
   void completeOnboarding() {

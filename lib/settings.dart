@@ -7,22 +7,38 @@ import 'package:share_plus/share_plus.dart';
 
 import 'detail.dart';
 import 'home.dart';
+import 'reminders.dart';
 import 'store.dart';
 import 'theme.dart';
 
-Future<void> showSettingsSheet(BuildContext context, HabitStore store) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (context) => ListenableBuilder(
-      listenable: store,
-      builder: (context, _) => _SettingsSheet(store: store),
-    ),
-  );
+/// A page of its own rather than a sheet: settings is a place you go, not a
+/// thing you glance at, and half of it — restoring a backup, the notification
+/// permission — is work you want the whole screen for.
+void openSettings(BuildContext context, HabitStore store) {
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => SettingsScreen(store: store),
+  ));
 }
 
-class _SettingsSheet extends StatelessWidget {
-  const _SettingsSheet({required this.store});
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key, required this.store});
+
+  final HabitStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListenableBuilder(
+        listenable: store,
+        builder: (context, _) => _SettingsBody(store: store),
+      ),
+    );
+  }
+}
+
+class _SettingsBody extends StatelessWidget {
+  const _SettingsBody({required this.store});
 
   final HabitStore store;
 
@@ -32,17 +48,32 @@ class _SettingsSheet extends StatelessWidget {
     final archived = store.archived;
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
-            Center(child: Text('Settings', style: text.titleLarge)),
-            const SizedBox(height: 24),
             Text('Appearance', style: text.labelSmall),
             const SizedBox(height: 8),
-            _ThemePicker(store: store),
+            Segmented<ThemeMode>(
+              options: const {
+                ThemeMode.system: 'System',
+                ThemeMode.light: 'Light',
+                ThemeMode.dark: 'Dark',
+              },
+              value: store.themeMode,
+              onChanged: store.setThemeMode,
+            ),
+            const SizedBox(height: 24),
+            Text('Reminders', style: text.labelSmall),
+            const SizedBox(height: 8),
+            SoftCard(
+              padding: EdgeInsets.zero,
+              child: _Row(
+                icon: Icons.notifications_none,
+                label: 'Allow notifications',
+                subtitle: 'Needed before a habit reminder can arrive',
+                onTap: () => _askForNotifications(context),
+              ),
+            ),
             const SizedBox(height: 24),
             Text('Your data', style: text.labelSmall),
             const SizedBox(height: 8),
@@ -75,63 +106,29 @@ class _SettingsSheet extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _ThemePicker extends StatelessWidget {
-  const _ThemePicker({required this.store});
-
-  final HabitStore store;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    const labels = {
-      ThemeMode.system: 'System',
-      ThemeMode.light: 'Light',
-      ThemeMode.dark: 'Dark',
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(pill),
-      ),
-      child: Row(
-        children: labels.entries.map((e) {
-          final selected = store.themeMode == e.key;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => store.setThemeMode(e.key),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: selected ? flameOf(context) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(pill),
-                ),
-                child: Text(
-                  e.value,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : scheme.secondary,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
+/// The reminder permission, asked for from the one place someone goes looking
+/// when a nudge never arrived. Android says no without a prompt once it has
+/// been permanently denied, so the failure has to name the phone's own
+/// settings rather than repeat itself.
+Future<void> _askForNotifications(BuildContext context) async {
+  final allowed = await reminders.requestPermission();
+  if (!context.mounted) return;
+  showToast(
+    context,
+    SnackBar(
+      content: Text(allowed
+          ? 'Notifications are on. Set a time on any habit.'
+          : 'Blocked. Turn Wick\'s notifications on in your phone\'s settings.'),
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+    ),
+  );
 }
 
 class _Row extends StatelessWidget {

@@ -510,12 +510,17 @@ class TintCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(14),
     this.onTap,
     this.onLongPress,
+    this.color,
   });
 
   final Widget child;
   final EdgeInsets padding;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+
+  /// Overrides the tinted ground while keeping the accent's hairline — for a
+  /// card that wants the colour at its edge but not under its content.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -524,8 +529,9 @@ class TintCard extends StatelessWidget {
         // Over the *page* ground, not the raised surface colour: these cards
         // are told apart from the page by their tint and hairline, the way the
         // reference does it, so starting them a step lighter would undo that.
-        color: Color.alphaBlend(
-            cardTint(context), Theme.of(context).scaffoldBackgroundColor),
+        color: color ??
+            Color.alphaBlend(
+                cardTint(context), Theme.of(context).scaffoldBackgroundColor),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cardEdge(context)),
       ),
@@ -537,6 +543,70 @@ class TintCard extends StatelessWidget {
           onLongPress: onLongPress,
           child: Padding(padding: padding, child: child),
         ),
+      ),
+    );
+  }
+}
+
+/// A pill of mutually exclusive choices — the settings sheets' one picker
+/// shape. Selected is the flame; the rest stay quiet.
+class Segmented<T> extends StatelessWidget {
+  const Segmented({
+    super.key,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  /// Choice -> label, in the order they should read.
+  final Map<T, String> options;
+  final T value;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(pill),
+      ),
+      child: Row(
+        children: options.entries.map((e) {
+          final selected = value == e.key;
+          return Expanded(
+            child: Semantics(
+              button: true,
+              selected: selected,
+              label: e.value,
+              excludeSemantics: true,
+              onTap: () => onChanged(e.key),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(e.key),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected ? flameOf(context) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(pill),
+                  ),
+                  child: Text(
+                    e.value,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : scheme.secondary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

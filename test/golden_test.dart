@@ -7,9 +7,11 @@ import 'package:habit_tracker/analytics_screen.dart';
 import 'package:habit_tracker/day_sheet.dart';
 import 'package:habit_tracker/detail.dart';
 import 'package:habit_tracker/home.dart';
+import 'package:habit_tracker/icons.dart';
 import 'package:habit_tracker/notes_screen.dart';
 import 'package:habit_tracker/main.dart';
 import 'package:habit_tracker/onboarding.dart';
+import 'package:habit_tracker/settings.dart';
 import 'package:habit_tracker/share_card.dart';
 import 'package:habit_tracker/store.dart';
 import 'package:habit_tracker/templates.dart';
@@ -179,10 +181,27 @@ void main() {
     await pumpScreen(tester, app(AnalyticsScreen(store: store), dark: true));
     // Scoped to a habit, the whole page takes that habit's colour — stat
     // tiles, trend line, consistency grid and all.
-    await tester.tap(find.text('Drink water'));
+    // The chips are marks now, not names.
+    await tester.tap(find.byIcon(iconFor('droplet')).first);
     await tester.pumpAndSettle();
     await expectLater(find.byType(AnalyticsScreen),
         matchesGoldenFile('goldens/analytics_filtered.png'));
+  });
+
+  // The per-habit bars each take their habit's colour: they sit under a
+  // HabitAccent, and reading the accent off the wrong context is what made
+  // them all flame once before.
+  testWidgets('analytics — by habit', (tester) async {
+    final store = await seeded();
+    await pumpScreen(tester, app(AnalyticsScreen(store: store), dark: false));
+    await tester.scrollUntilVisible(
+      find.text('By habit'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await expectLater(find.byType(AnalyticsScreen),
+        matchesGoldenFile('goldens/analytics_by_habit.png'));
   });
 
   testWidgets('analytics — dark', (tester) async {
@@ -304,6 +323,56 @@ void main() {
         app(NotesScreen(store: store), dark: false));
     await expectLater(
         find.byType(NotesScreen), matchesGoldenFile('goldens/notes.png'));
+  });
+
+  // The dashboard's other layout — same page, same habits, no grids.
+  for (final dark in [false, true]) {
+    testWidgets('compact layout — ${dark ? "dark" : "light"}', (tester) async {
+      final store = await seeded();
+      store.setCompactLayout(true);
+      await pumpScreen(tester, app(HomeScreen(store: store), dark: dark));
+      await expectLater(
+          find.byType(HomeScreen),
+          matchesGoldenFile(
+              'goldens/compact_${dark ? "dark" : "light"}.png'));
+    });
+  }
+
+  testWidgets('compact layout — a week wide, names hidden', (tester) async {
+    final store = await seeded();
+    store.setCompactLayout(true);
+    store.setCompactDays(7);
+    store.setCompactNames(false);
+    await pumpScreen(tester, app(HomeScreen(store: store), dark: false));
+    await expectLater(find.byType(HomeScreen),
+        matchesGoldenFile('goldens/compact_week.png'));
+  });
+
+  testWidgets('compact list settings', (tester) async {
+    final store = await seeded();
+    store.setCompactLayout(true);
+    await pumpScreen(tester, app(HomeScreen(store: store), dark: false));
+    await tester.tap(find.text('Last 5 days'));
+    await tester.pumpAndSettle();
+    // The sheet is a route of its own, so the whole app is the frame here.
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('goldens/compact_settings.png'));
+  });
+
+  testWidgets('page bar — the layout switch, compact', (tester) async {
+    final store = await seeded();
+    store.setCompactLayout(true);
+    await pumpScreen(tester, app(RootScreen(store: store), dark: false));
+    await expectLater(find.byType(RootScreen),
+        matchesGoldenFile('goldens/bar_compact.png'));
+  });
+
+  testWidgets('settings — a page, not a sheet', (tester) async {
+    final store = await seeded();
+    store.setArchived(store.habits.last, true);
+    await pumpScreen(tester, app(SettingsScreen(store: store), dark: false));
+    await expectLater(find.byType(SettingsScreen),
+        matchesGoldenFile('goldens/settings.png'));
   });
 
   testWidgets('notes screen — empty', (tester) async {

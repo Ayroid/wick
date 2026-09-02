@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'compact_list.dart';
 import 'day_sheet.dart';
 import 'detail.dart';
 import 'edit_sheet.dart';
@@ -62,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? const SizedBox.shrink()
                     : habits.isEmpty
                     ? _EmptyState(store: store)
+                    : store.compactLayout
+                    ? CompactList(store: store, habits: habits)
                     : ReorderableListView.builder(
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
                         itemCount: habits.length,
@@ -118,11 +121,11 @@ class _TodayCard extends StatelessWidget {
           : '$done of $total habits done today, ${total - done} to go',
       excludeSemantics: true,
       child: SoftCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 18, 14),
+        padding: const EdgeInsets.fromLTRB(12, 8, 16, 10),
         child: Row(
           children: [
-            WickImage(pose, size: 60, semanticLabel: 'Wick the candle'),
-            const SizedBox(width: 12),
+            WickImage(pose, size: 42, semanticLabel: 'Wick the candle'),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,7 +137,7 @@ class _TodayCard extends StatelessWidget {
                       Text(
                         '$done',
                         style: text.headlineLarge?.copyWith(
-                          fontSize: 26,
+                          fontSize: 22,
                           height: 1,
                         ),
                       ),
@@ -146,12 +149,12 @@ class _TodayCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 7),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(pill),
                     child: LinearProgressIndicator(
                       value: total == 0 ? 0 : done / total,
-                      minHeight: 8,
+                      minHeight: 6,
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.surfaceContainerHighest,
@@ -309,6 +312,11 @@ class HabitTile extends StatelessWidget {
 /// Records today, then decides whether the moment deserves recognition.
 /// Order matters: finishing everything outranks a single habit's milestone,
 /// and neither should fire twice in a day.
+///
+/// An ordinary check-off says nothing: a toast on every tap is noise you learn
+/// to swipe past rather than read, and it covered the page you were using. The
+/// milestones below still speak, and the day sheet is a long-press away for
+/// anyone with something to write.
 void _record(BuildContext context, HabitStore store, Habit habit) {
   final wasDone = habit.doneToday;
   store.bump(habit, today());
@@ -339,32 +347,7 @@ void _record(BuildContext context, HabitStore store, Habit habit) {
       body: '${habit.name} — kept going without a break.',
       onNote: () => showDaySheet(context, store, habit, today()),
     );
-    return;
   }
-
-  // The note offer rides on the toast that was already appearing: the moment
-  // just after checking off is when there is something to say, and ignoring
-  // it costs nothing. Never a prompt of its own — that would be journaling
-  // software asking to be fed.
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 4),
-        margin: const EdgeInsets.all(16),
-        content: Row(
-          children: [
-            const WickImage(Wick.complete, size: 26),
-            const SizedBox(width: 10),
-            const Expanded(child: Text('Nice. Keep the flame going.')),
-          ],
-        ),
-        action: SnackBarAction(
-          label: 'Add note',
-          onPressed: () => showDaySheet(context, store, habit, today()),
-        ),
-      ),
-    );
 }
 
 String _subtitle(Habit h) {

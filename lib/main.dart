@@ -184,20 +184,33 @@ class _RootScreenState extends State<RootScreen> {
   /// The controller's fractional position, so the bar tracks the drag rather
   /// than snapping when a page settles — that continuous handoff is the whole
   /// point of a shared bar.
-  var _position = 0.0;
+  ///
+  /// A notifier rather than setState: only the two bars move with the drag,
+  /// and rebuilding this State rebuilt the PageView too — a dashboard of
+  /// contribution grids, the analytics maths and every note, on every frame
+  /// of every swipe. That was the swipe lag.
+  final _position = ValueNotifier(0.0);
+
+  /// The landed page. The top bar's title only changes here, not with the
+  /// drag, so it doesn't recount every note on every frame.
+  final _page = ValueNotifier(0);
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(() {
       final p = _controller.page;
-      if (p != null && p != _position) setState(() => _position = p);
+      if (p == null) return;
+      _position.value = p;
+      _page.value = p.round();
     });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _position.dispose();
+    _page.dispose();
     super.dispose();
   }
 
@@ -210,26 +223,46 @@ class _RootScreenState extends State<RootScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // The bar handles its own bottom inset, so the pages get the full height
-      // between the two pieces of chrome.
-      bottomNavigationBar: PageTabs(position: _position, onSelect: _go),
       body: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListenableBuilder(
-              listenable: widget.store,
-              builder: (context, _) =>
-                  PageBar(store: widget.store, position: _position),
+            // The title only changes when the *rounded* page does, so the bar
+            // is rebuilt on a landing rather than on every frame — its notes
+            // subtitle walks every habit's notes to count them.
+            ValueListenableBuilder(
+              valueListenable: _page,
+              builder: (context, page, _) => ListenableBuilder(
+                listenable: widget.store,
+                builder: (context, _) =>
+                    PageBar(store: widget.store, page: page),
+              ),
             ),
             Expanded(
-              child: PageView(
-                controller: _controller,
+              // The tab pill floats *over* the page rather than sitting in a
+              // bar below it — so it goes in a Stack, not in
+              // `bottomNavigationBar`, which would reserve a strip of the
+              // scaffold for it. Every page already pads its scroll clear of
+              // where it lands.
+              child: Stack(
                 children: [
-                  HomeScreen(store: widget.store),
-                  AnalyticsScreen(store: widget.store),
-                  NotesScreen(store: widget.store),
+                  PageView(
+                    controller: _controller,
+                    children: [
+                      HomeScreen(store: widget.store),
+                      AnalyticsScreen(store: widget.store),
+                      NotesScreen(store: widget.store),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: ValueListenableBuilder(
+                      valueListenable: _position,
+                      builder: (context, position, _) =>
+                          PageTabs(position: position, onSelect: _go),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -17,13 +17,13 @@ class PageBar extends StatelessWidget {
   const PageBar({
     super.key,
     required this.store,
-    required this.position,
+    required this.page,
   });
 
   final HabitStore store;
 
-  /// 0.0–2.0, straight from the PageController.
-  final double position;
+  /// The page that has landed — 0, 1 or 2.
+  final int page;
 
   (String, String) _titleFor(int page) {
     switch (page) {
@@ -58,11 +58,17 @@ class PageBar extends StatelessWidget {
               Expanded(
                 child: SizedBox(
                   height: 58,
-                  child: _Title(_titleFor(position.round())),
+                  child: _Title(_titleFor(page)),
                 ),
               ),
+              // Dashboard only: it switches how the habits below are drawn,
+              // and there is nothing to switch on analytics or notes.
+              if (page == 0) ...[
+                LayoutSwitch(store: store),
+                const SizedBox(width: 6),
+              ],
               IconButton(
-                onPressed: () => showSettingsSheet(context, store),
+                onPressed: () => openSettings(context, store),
                 icon: const Icon(Icons.settings_outlined, size: 22),
                 color: scheme.secondary,
                 constraints:
@@ -72,6 +78,91 @@ class PageBar extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Cards-with-grids, or the compact table. Two glyphs in one well, the way
+/// the reference bar reads — a switch between two views of the same habits,
+/// not a control that does something.
+class LayoutSwitch extends StatelessWidget {
+  const LayoutSwitch({super.key, required this.store});
+
+  final HabitStore store;
+
+  static const _options = [
+    (false, Icons.calendar_view_month_outlined, 'Card layout'),
+    (true, Icons.view_list_outlined, 'Compact layout'),
+  ];
+
+  static const _slot = 34.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final at = store.compactLayout ? 1 : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark(context) ? darkSunk : const Color(0xFFF0E9E1),
+        borderRadius: BorderRadius.circular(pill),
+      ),
+      child: SizedBox(
+        width: _slot * _options.length,
+        height: _slot,
+        child: Stack(
+          children: [
+            // The disc travels between the two glyphs; before, it appeared
+            // under one and vanished from the other, which read as a flicker
+            // rather than a switch.
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              left: _slot * at,
+              top: 0,
+              child: Container(
+                width: _slot,
+                height: _slot,
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                for (final (compact, icon, label) in _options)
+                  Semantics(
+                    button: true,
+                    selected: store.compactLayout == compact,
+                    label: label,
+                    excludeSemantics: true,
+                    onTap: () => store.setCompactLayout(compact),
+                    child: Tooltip(
+                      message: label,
+                      child: InkWell(
+                        onTap: () => store.setCompactLayout(compact),
+                        customBorder: const CircleBorder(),
+                        child: SizedBox(
+                          width: _slot,
+                          height: _slot,
+                          child: Icon(
+                            icon,
+                            size: 18,
+                            color: store.compactLayout == compact
+                                ? scheme.onSurface
+                                : scheme.secondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -99,8 +190,9 @@ class _Title extends StatelessWidget {
   }
 }
 
-/// Bottom navigation. Like the top bar it reads the *fractional* page
-/// position, so the pill and the colours move with the swipe rather than
+/// Bottom navigation: a pill that floats over the page rather than a bar
+/// ruled off from it. Like the top bar it reads the *fractional* page
+/// position, so the lit disc slides under the thumb with the swipe instead of
 /// jumping once a page lands — the two ends of the shell stay in step.
 class PageTabs extends StatelessWidget {
   const PageTabs({
@@ -118,58 +210,54 @@ class PageTabs extends StatelessWidget {
     (Icons.sticky_note_2_outlined, 'Notes'),
   ];
 
+  /// One tap target, and the width of the disc that rides over them.
+  static const _slot = 58.0;
+  static const _inset = 5.0;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        // The brand separates surfaces with light, not rules — so a shadow
-        // thrown upward rather than a hairline border.
-        boxShadow: [
-          BoxShadow(
-            color: isDark(context)
-                ? const Color(0x66000000)
-                : const Color(0x0F102A5C),
-            blurRadius: 16,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 62,
-          child: LayoutBuilder(
-            builder: (context, box) {
-              final width = box.maxWidth / _items.length;
-
-              return Stack(
+    // Shrink-wrapped, both ways: it is placed by the Align that hosts it, and
+    // a Center here would float it up the middle of the page instead.
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: UnconstrainedBox(
+          child: Container(
+            padding: const EdgeInsets.all(_inset),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(pill),
+              // It floats now, so it needs a shadow on every side rather than
+              // one thrown upward from an edge it no longer has.
+              boxShadow: cardShadow(isDark(context)),
+            ),
+            child: SizedBox(
+              width: _slot * _items.length,
+              height: _slot,
+              child: Stack(
                 children: [
+                  // Slides with the drag. No opacity trick: a disc halfway
+                  // between two tabs reads as travel, which is what it is.
                   Positioned(
-                    left: width * position + (width - 64) / 2,
-                    top: 8,
-                    // Slides *and* fades: the icons don't move, so a pill left
-                    // at full strength between two tabs reads as a stray blob
-                    // rather than an indicator.
-                    child: Opacity(
-                      opacity: (1 - (position - position.round()).abs() * 2)
-                          .clamp(0.0, 1.0),
-                      child: Container(
-                        width: 64,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: flameSoftOf(context),
-                          borderRadius: BorderRadius.circular(pill),
-                        ),
+                    left: _slot * position,
+                    top: 0,
+                    child: Container(
+                      width: _slot,
+                      height: _slot,
+                      decoration: BoxDecoration(
+                        color: flameSoftOf(context),
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),
                   Row(
                     children: [
                       for (var i = 0; i < _items.length; i++)
-                        Expanded(
+                        SizedBox(
+                          width: _slot,
                           child: _Tab(
                             icon: _items[i].$1,
                             label: _items[i].$2,
@@ -182,8 +270,8 @@ class PageTabs extends StatelessWidget {
                     ],
                   ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
@@ -217,23 +305,12 @@ class _Tab extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       onTap: onTap,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 21, color: colour),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: fontFamily,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: colour,
-              ),
-            ),
-          ],
+      child: Tooltip(
+        message: label,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Center(child: Icon(icon, size: 22, color: colour)),
         ),
       ),
     );
