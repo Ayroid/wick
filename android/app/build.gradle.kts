@@ -14,6 +14,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+base {
+    // APK filenames: wick-arm64-v8a-release.apk instead of app-...
+    archivesName.set("wick")
+}
+
 android {
     namespace = "com.ayroid.habit_tracker"
     compileSdk = flutter.compileSdkVersion
