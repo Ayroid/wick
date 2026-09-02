@@ -50,3 +50,12 @@ app.*.map.json
 
 # Release build output: obfuscation symbols for a build anyone can reproduce.
 /symbols/
+
+# Shipped build artifacts, archived per version by tool/release.sh.
+# Kept on disk so an old build can be reinstalled; too big for git.
+releases/
+
+# Golden-test failure output: regenerated on every red run, useless once green.
+test/failures/
+# Local tooling cache.
+.serena/
