@@ -31,7 +31,7 @@ class GridFrame extends StatelessWidget {
     this.gap = 3,
     this.showMonths = false,
     this.showDays = false,
-    this.maxWeeks = 27,
+    this.maxWeeks = 53,
     this.scrollable = false,
   });
 
@@ -80,8 +80,15 @@ class GridFrame extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, box) {
           final room = box.maxWidth - _labelWidth;
-          final weeks =
-              scrollable ? maxWeeks : (room / _step).floor().clamp(1, maxWeeks);
+          // +gap because the last column carries no trailing gap; flooring the
+          // bare ratio drops a column that fits and leaves a gutter.
+          final weeks = scrollable
+              ? maxWeeks
+              : ((room + gap) / _step).floor().clamp(1, maxWeeks);
+          // What a column actually occupies once the leftover is spread: the
+          // month ruler places labels by this, not by [_step], or the names
+          // drift off the columns they belong to.
+          final pitch = (scrollable ? weeks * _step - gap : room) / weeks;
           final firstMonday = shiftDays(startOfWeek(today()), -7 * (weeks - 1));
           final days = [
             for (var i = 0; i < weeks * 7; i++) shiftDays(firstMonday, i),
@@ -96,7 +103,7 @@ class GridFrame extends StatelessWidget {
                   child: _MonthRuler(
                     firstMonday: firstMonday,
                     weeks: weeks,
-                    step: _step,
+                    step: pitch,
                     fontSize: _labelSize,
                   ),
                 ),
@@ -105,18 +112,24 @@ class GridFrame extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (var col = 0; col < weeks; col++)
-                      Padding(
-                        padding:
-                            EdgeInsets.only(right: col == weeks - 1 ? 0 : gap),
-                        child: Column(
-                          children: [
-                            for (var row = 0; row < 7; row++)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                    bottom: row == 6 ? 0 : gap),
-                                child: cell(days[col * 7 + row]),
-                              ),
-                          ],
+                      // Expanded, not a fixed step: the leftover width — the
+                      // sub-column remainder, or the slack left when maxWeeks
+                      // caps the history — is spread across the columns so the
+                      // grid reaches both edges of its well.
+                      Expanded(
+                        child: Padding(
+                          padding:
+                              EdgeInsets.only(right: col == weeks - 1 ? 0 : gap),
+                          child: Column(
+                            children: [
+                              for (var row = 0; row < 7; row++)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                      bottom: row == 6 ? 0 : gap),
+                                  child: cell(days[col * 7 + row]),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -177,7 +190,7 @@ class ContributionGrid extends StatelessWidget {
     this.gap = 3,
     this.showMonths = false,
     this.showDays = false,
-    this.maxWeeks = 27,
+    this.maxWeeks = 53,
     this.scrollable = false,
   });
 

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:habit_tracker/day_sheet.dart';
 import 'package:habit_tracker/detail.dart';
-import 'package:habit_tracker/grid.dart';
 import 'package:habit_tracker/edit_sheet.dart';
+import 'package:habit_tracker/grid.dart';
 import 'package:habit_tracker/home.dart';
 import 'package:habit_tracker/store.dart';
 import 'package:habit_tracker/theme.dart';
@@ -85,7 +85,7 @@ void main() {
     expect(find.text('What went well? What got in the way?'), findsOneWidget);
   });
 
-  testWidgets('checking a habit off offers a note', (tester) async {
+  testWidgets('checking a habit off says nothing at all', (tester) async {
     final store = HabitStore();
     await store.load();
     store.add('Run');
@@ -98,26 +98,19 @@ void main() {
 
     await tester.tap(find.byType(HabitMark).first);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400)); // snackbar slides in
-    expect(find.text('Add note'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400)); // a toast would be in
 
-    await tester.tap(find.text('Add note'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byType(TextField), 'Felt unusually easy.');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-
-    expect(store.habits.first.noteOn(today()), 'Felt unusually easy.');
+    expect(store.habits.first.doneToday, isTrue);
+    expect(find.byType(SnackBar), findsNothing);
   });
 
-  testWidgets('the note offer does not appear when un-checking',
-      (tester) async {
+  testWidgets('a note is written by holding the day itself', (tester) async {
+    // The path the check-off toast used to short-cut to. It is the only one
+    // now, so it is the one worth a test.
     final store = HabitStore();
     await store.load();
-    final h = store.add('Run');
-    store.add('Stretch');
-    store.bump(h, today());
+    store.setCompactLayout(true); // where the dashboard's cells are tappable
+    store.add('Run');
 
     await tester.pumpWidget(MaterialApp(
       theme: appTheme(dark: false),
@@ -125,16 +118,14 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Done habits sort to the bottom, so target Run's own mark rather than
-    // whichever tile happens to be first.
-    await tester.tap(find.descendant(
-      of: find.ancestor(of: find.text('Run'), matching: find.byType(HabitTile)),
-      matching: find.byType(HabitMark),
-    ));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(h.doneToday, isFalse);
-    expect(find.text('Add note'), findsNothing);
+    await tester.longPress(find.byType(GridCell).last); // today
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Felt unusually easy.');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(store.habits.first.noteOn(today()), 'Felt unusually easy.');
   });
 
   testWidgets('the celebration keeps the note offer', (tester) async {

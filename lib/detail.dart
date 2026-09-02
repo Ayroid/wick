@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'day_sheet.dart';
@@ -187,16 +189,40 @@ String _schedule(Habit h) {
 }
 
 void toast(BuildContext context, String message, {VoidCallback? undo}) {
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
+  showToast(
+    context,
+    SnackBar(
       content: Text(message),
-      duration: const Duration(seconds: 5),
+      duration: Duration(seconds: undo == null ? 3 : 5),
       margin: const EdgeInsets.all(16),
       action:
           undo == null ? null : SnackBarAction(label: 'Undo', onPressed: undo),
-    ));
+    ),
+  );
+}
+
+/// Shows [bar], and takes it away again when its time is up.
+///
+/// The timer is ours rather than ScaffoldMessenger's, unconditionally, because
+/// the messenger's own auto-dismiss is conditional in ways a phone can trip
+/// without telling anyone: it is skipped outright while the platform reports
+/// accessible navigation, and it is only armed once the entrance animation
+/// reports completion. Either way the toast sits there until something else
+/// replaces it. Every toast here is an optional aside, so none of them get to
+/// stay on screen.
+///
+/// It hides whatever is current rather than closing this controller: `close()`
+/// asserts it is still the front of the queue, and a newer toast can have
+/// replaced it by then. Cancelled when this one goes on its own, so it can
+/// never take a later toast down early.
+void showToast(BuildContext context, SnackBar bar) {
+  if (!context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+  final shown = messenger.showSnackBar(bar);
+  final timer = Timer(bar.duration, () {
+    if (messenger.mounted) messenger.hideCurrentSnackBar();
+  });
+  shown.closed.whenComplete(timer.cancel);
 }
 
 /// One month at a time, Monday-first. The grid above shows the shape of a

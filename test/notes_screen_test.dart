@@ -94,12 +94,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs), matching: find.text('Notes')));
+        of: find.byType(PageTabs),
+        matching: find.byIcon(Icons.sticky_note_2_outlined)));
     await tester.pumpAndSettle();
     expect(find.text('Chapter three.'), findsOneWidget);
 
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs), matching: find.text('Today')));
+        of: find.byType(PageTabs),
+        matching: find.byIcon(Icons.check_circle_outline)));
     await tester.pumpAndSettle();
     expect(find.text(greeting()), findsOneWidget);
     expect(find.text('Chapter three.'), findsNothing);
@@ -115,7 +117,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs), matching: find.text('Notes')));
+        of: find.byType(PageTabs),
+        matching: find.byIcon(Icons.sticky_note_2_outlined)));
     await tester.pumpAndSettle();
     expect(find.text('3 notes across 2 days'), findsOneWidget);
 

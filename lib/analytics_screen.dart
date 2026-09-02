@@ -66,7 +66,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    _SummaryGrid(stats: stats),
+                    _SummaryGrid(
+                      stats: stats,
+                      // The dashboard's own palette, in its own order. Scoped
+                      // to one habit there is nothing to spread across four
+                      // tiles — the page accent already is that habit.
+                      palette: picked != null
+                          ? const []
+                          : [for (final h in active) habitColorAt(h.color)],
+                    ),
                     const SizedBox(height: 12),
                     _TrendCard(stats: stats),
                     const SizedBox(height: 12),
@@ -163,7 +171,7 @@ class _FilterChip extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(pill),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: EdgeInsets.symmetric(horizontal: habit == null ? 14 : 9),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(pill),
@@ -171,29 +179,32 @@ class _FilterChip extends StatelessWidget {
                   color: on ? tint(context, 0.4) : Colors.transparent,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (habit != null) ...[
-                    habit!.icon.isEmpty
-                        ? Text(habit!.emoji.isEmpty ? defaultEmoji : habit!.emoji,
-                            style: const TextStyle(fontSize: 13))
-                        : Icon(iconFor(habit!.icon),
-                            size: 14,
-                            color: on ? onTint(context) : scheme.secondary),
-                    const SizedBox(width: 6),
-                  ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: fontFamily,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: on ? onTint(context) : scheme.secondary,
-                    ),
-                  ),
-                ],
-              ),
+              // A habit chip is its mark alone, in the habit's own colour —
+              // the row is scanned, not read, and nine names in a row is a
+              // wall of text where nine colours is a palette. "All" has no
+              // mark, so it keeps its word.
+              child: habit == null
+                  ? Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: fontFamily,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: on ? onTint(context) : scheme.secondary,
+                      ),
+                    )
+                  : habit!.icon.isEmpty
+                      ? Text(
+                          habit!.emoji.isEmpty ? defaultEmoji : habit!.emoji,
+                          style: const TextStyle(fontSize: 15),
+                        )
+                      : Icon(
+                          iconFor(habit!.icon),
+                          size: 18,
+                          // Its colour in both states: unselected is what
+                          // tells one chip from the next.
+                          color: accentOf(context),
+                        ),
             ),
           ),
         ),
@@ -206,9 +217,21 @@ class _FilterChip extends StatelessWidget {
 /// number into 90 px; the reference gives each one a tile it can breathe in,
 /// with the glyph in the corner saying what kind of number it is.
 class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({required this.stats});
+  const _SummaryGrid({required this.stats, this.palette = const []});
 
   final Analytics stats;
+
+  /// The habits' own colours, in their own order, for the unfiltered page —
+  /// four aggregate numbers have no habit to belong to, but the page still
+  /// reads in the palette the dashboard uses rather than four orange tiles.
+  /// Empty when the page is scoped to one habit: then every tile is that
+  /// habit's colour, which the page accent already provides.
+  final List<Color> palette;
+
+  /// Cycles, so one habit colours all four and nine colour the first four.
+  Widget _tinted(int i, Widget tile) => palette.isEmpty
+      ? tile
+      : HabitAccent(color: palette[i % palette.length], child: tile);
 
   @override
   Widget build(BuildContext context) {
@@ -219,20 +242,26 @@ class _SummaryGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _Stat(
+              child: _tinted(
+                0,
+                _Stat(
                 icon: Icons.percent_rounded,
                 value: '${(stats.completionRate * 100).round()}',
                 label: 'Completion',
                 caption: 'last ${stats.window} days',
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _Stat(
+              child: _tinted(
+                1,
+                _Stat(
                 icon: Icons.check_rounded,
                 value: '${stats.totalCheckOffs}',
                 label: 'Check-offs',
                 caption: 'all time',
+                ),
               ),
             ),
           ],
@@ -241,22 +270,28 @@ class _SummaryGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _Stat(
+              child: _tinted(
+                2,
+                _Stat(
                 icon: Icons.local_fire_department_rounded,
                 value: best == null ? '0' : '${best.$2}',
                 label: 'Best run',
                 caption: best == null || best.$2 == 0
                     ? 'none active'
                     : (best.$1.isWeekly ? 'weeks' : 'days'),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _Stat(
+              child: _tinted(
+                3,
+                _Stat(
                 icon: Icons.auto_awesome_rounded,
                 value: '${stats.perfectDays}',
                 label: 'Clean days',
                 caption: 'of ${stats.measuredDays} measured',
+                ),
               ),
             ),
           ],
@@ -287,6 +322,10 @@ class _Stat extends StatelessWidget {
       label: '$label: $value, $caption',
       excludeSemantics: true,
       child: TintCard(
+        // White under the number, colour only at the edge and on the badge:
+        // four tinted grounds side by side turned the top of the page into a
+        // swatch chart, and the figures are what the page is for.
+        color: Theme.of(context).colorScheme.surface,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,6 +645,68 @@ class _ScoreCell extends StatelessWidget {
   }
 }
 
+/// One habit's completion bar. Its own widget so it builds *below* the
+/// [HabitAccent] wrapping it — read from the card's context instead, every bar
+/// on the page comes out the page's flame rather than the habit's colour.
+class _HabitRate extends StatelessWidget {
+  const _HabitRate({
+    required this.habit,
+    required this.rate,
+    required this.days,
+  });
+
+  final Habit habit;
+  final double rate;
+  final int days;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Semantics(
+      label: '${habit.name}: ${(rate * 100).round()} percent '
+          'over the last $days days',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              HabitIcon(habit: habit, size: 26),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  habit.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(fontSize: 14),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${(rate * 100).round()}%',
+                style: mono(13,
+                    color: theme.colorScheme.onSurface,
+                    weight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(pill),
+            child: LinearProgressIndicator(
+              value: rate,
+              minHeight: 7,
+              backgroundColor: cellEmpty(context),
+              valueColor: AlwaysStoppedAnimation(accentOf(context)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Four steps rather than a continuous ramp — adjacent days stay
 /// distinguishable, which a smooth gradient at this cell size does not.
 Color shadeFor(double score, BuildContext c) {
@@ -800,48 +901,7 @@ class _PerHabitCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 14),
               child: HabitAccent(
                 color: habitColorAt(habit.color),
-                child: Semantics(
-                label: '${habit.name}: ${(rate * 100).round()} percent '
-                    'over the last ${stats.window} days',
-                excludeSemantics: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        HabitIcon(habit: habit, size: 26),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            habit.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontSize: 14),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${(rate * 100).round()}%',
-                          style: mono(13,
-                              color: theme.colorScheme.onSurface,
-                              weight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(pill),
-                      child: LinearProgressIndicator(
-                        value: rate,
-                        minHeight: 7,
-                        backgroundColor: cellEmpty(context),
-                        valueColor: AlwaysStoppedAnimation(accentOf(context)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                child: _HabitRate(habit: habit, rate: rate, days: stats.window),
               ),
             ),
         ],
