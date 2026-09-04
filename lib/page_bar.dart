@@ -204,6 +204,16 @@ const shellTabs = <TabSpec>[
   (label: 'Notes', icon: LucideIcons.notebookPen),
 ];
 
+/// How tall the floating tab pill stands: the tab itself plus the track's
+/// padding on both sides.
+///
+/// Exported because the add button sits beside it and has to match. Two
+/// hand-tuned numbers that must agree is a pair that drifts the first time
+/// either is touched.
+const tabHeight = 44.0;
+const tabInset = 5.0;
+const tabBarHeight = tabHeight + tabInset * 2;
+
 /// The floating tab pill.
 ///
 /// A `Stack` overlay rather than a `bottomNavigationBar`, which would reserve a
@@ -250,7 +260,7 @@ class PageTabs extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: Padding(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(tabInset),
                 child: ValueListenableBuilder<double>(
                   valueListenable: position,
                   builder: (context, value, _) => Row(
@@ -318,7 +328,7 @@ class _Tab extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(pill),
           child: Container(
-            height: 44,
+            height: tabHeight,
             constraints: const BoxConstraints(minWidth: 48),
             padding: EdgeInsets.symmetric(horizontal: 14 + 6 * weight),
             decoration: BoxDecoration(

@@ -4,6 +4,7 @@ import 'compact_list.dart';
 import 'day_sheet.dart';
 import 'clock.dart';
 import 'detail.dart';
+import 'page_bar.dart';
 import 'edit_sheet.dart';
 import 'grid.dart';
 import 'icon_picker.dart';
@@ -32,14 +33,29 @@ class _HomeScreenState extends State<HomeScreen> {
         listenable: store,
         builder: (context, _) => store.visible.isEmpty
             ? const SizedBox.shrink()
-            : FloatingActionButton(
-                onPressed: () => showEditSheet(context, store),
-                tooltip: 'New habit',
-                backgroundColor: flameOf(context),
-                foregroundColor: Colors.white,
-                elevation: 2,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.add, size: 26),
+            // Sized to the tab pill beside it. A 56px default FAB next to a
+            // 54px bar reads as a mistake at a glance, and the two are the
+            // only two things floating over the page.
+            : Theme(
+                data: Theme.of(context).copyWith(
+                  floatingActionButtonTheme: const FloatingActionButtonThemeData(
+                    sizeConstraints: BoxConstraints.tightFor(
+                      width: tabBarHeight,
+                      height: tabBarHeight,
+                    ),
+                  ),
+                ),
+                child: FloatingActionButton(
+                  onPressed: () => showEditSheet(context, store),
+                  tooltip: 'New habit',
+                  backgroundColor: flameOf(context),
+                  // Computed, not white: the flame is a mid-luminance orange
+                  // and white on it measures 3.27.
+                  foregroundColor: onAccent(context),
+                  elevation: 2,
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.add, size: 26),
+                ),
               ),
       ),
       // No SafeArea: RootScreen's shared top bar already holds the inset, and
