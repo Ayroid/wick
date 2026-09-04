@@ -28,6 +28,15 @@ Future<void> loadFonts() async {
       .load();
 
   await _loadFile('MaterialIcons', _materialIconsPath());
+
+  // Lucide, under the package-qualified family its IconData actually names.
+  // Without it every habit icon and every tab glyph draws as a hollow box, and
+  // the goldens stop being a check on any of them.
+  await _loadFile(
+    'packages/lucide_icons_flutter/Lucide',
+    '${Platform.environment['HOME']}/.pub-cache/hosted/pub.dev'
+        '/lucide_icons_flutter-3.1.17/assets/lucide.ttf',
+  );
   await _loadFile('Noto Color Emoji',
       '/usr/share/fonts/google-noto-color-emoji-fonts/Noto-COLRv1.ttf');
 }

@@ -255,14 +255,9 @@ class _RootScreenState extends State<RootScreen> {
                       NotesScreen(store: widget.store),
                     ],
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: ValueListenableBuilder(
-                      valueListenable: _position,
-                      builder: (context, position, _) =>
-                          PageTabs(position: position, onSelect: _go),
-                    ),
-                  ),
+                  // PageTabs places itself and listens for itself, so a swipe
+                  // repaints the pill rather than everything under a builder.
+                  PageTabs(position: _position, onSelect: _go),
                 ],
               ),
             ),

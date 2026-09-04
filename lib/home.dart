@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'compact_list.dart';
 import 'day_sheet.dart';
+import 'clock.dart';
 import 'detail.dart';
 import 'edit_sheet.dart';
 import 'grid.dart';
@@ -109,7 +110,7 @@ class _TodayCard extends StatelessWidget {
     final complete = done == total;
     // Evening and everything done: Wick has earned the rest.
     final pose = complete
-        ? (DateTime.now().hour >= 18 ? Wick.rest : Wick.celebrate)
+        ? (clock().hour >= 18 ? Wick.rest : Wick.celebrate)
         : done == 0
         ? Wick.standing
         : Wick.focus;

@@ -93,15 +93,15 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    // By label, not by icon codepoint: a tab's glyph is a design choice and
+    // changing the icon set should not break a test about navigation.
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs),
-        matching: find.byIcon(Icons.sticky_note_2_outlined)));
+        of: find.byType(PageTabs), matching: find.bySemanticsLabel('Notes')));
     await tester.pumpAndSettle();
     expect(find.text('Chapter three.'), findsOneWidget);
 
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs),
-        matching: find.byIcon(Icons.check_circle_outline)));
+        of: find.byType(PageTabs), matching: find.bySemanticsLabel('Today')));
     await tester.pumpAndSettle();
     expect(find.text(greeting()), findsOneWidget);
     expect(find.text('Chapter three.'), findsNothing);
@@ -116,9 +116,10 @@ void main() {
       home: RootScreen(store: store),
     ));
     await tester.pumpAndSettle();
+    // By label, not by icon codepoint: a tab's glyph is a design choice and
+    // changing the icon set should not break a test about navigation.
     await tester.tap(find.descendant(
-        of: find.byType(PageTabs),
-        matching: find.byIcon(Icons.sticky_note_2_outlined)));
+        of: find.byType(PageTabs), matching: find.bySemanticsLabel('Notes')));
     await tester.pumpAndSettle();
     expect(find.text('3 notes across 2 days'), findsOneWidget);
 
