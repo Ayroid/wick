@@ -166,7 +166,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Compact list'), findsOneWidget);
 
-    await tester.tap(find.text('3'));
+    // Scoped to the chip, not just the glyph: the grid behind the sheet also
+    // draws a "3" as a day-of-month label, and which days it shows depends on
+    // the date the suite runs on. `find.text` alone is ambiguous roughly one
+    // day in seven.
+    await tester.tap(find.descendant(
+      of: find.byType(DayChip),
+      matching: find.text('3'),
+    ));
     await tester.pumpAndSettle();
     expect(store.compactDays, 3);
 

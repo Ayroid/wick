@@ -112,7 +112,7 @@ flutter_launcher_icons:
   # launcher's own backdrop through the candle.
   android: true
   adaptive_icon_background: "#FFF8F3"
-  adaptive_icon_foreground: assets/icon/app_icon.png
+  adaptive_icon_foreground: assets/icon/app_icon_adaptive.png
   ios: true
   remove_alpha_ios: true
   background_color_ios: "#FFF8F3"

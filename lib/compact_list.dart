@@ -323,7 +323,7 @@ class _CompactSettings extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(right: n == 7 ? 0 : 6),
-                    child: _DayChip(
+                    child: DayChip(
                       days: n,
                       selected: store.compactDays == n,
                       onTap: () => store.setCompactDays(n),
@@ -346,8 +346,13 @@ class _CompactSettings extends StatelessWidget {
   }
 }
 
-class _DayChip extends StatelessWidget {
-  const _DayChip({
+/// One of the day-count choices in the compact list's settings sheet.
+///
+/// Public only so a test can scope a finder to it — the grid behind the sheet
+/// draws day-of-month labels that collide with these numbers.
+class DayChip extends StatelessWidget {
+  const DayChip({
+    super.key,
     required this.days,
     required this.selected,
     required this.onTap,

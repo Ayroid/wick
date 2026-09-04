@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'clock.dart';
+
 // ── Wick palette ────────────────────────────────────────────────────────────
 // Navy structures, flame is the brand, and green/purple are reserved for two
 // specific meanings: green says "completed", purple says "progress".
@@ -229,7 +231,7 @@ String longDate(DateTime d) =>
 String shortDate(DateTime d) => '${months[d.month - 1]} ${d.day}, ${d.year}';
 
 String greeting() {
-  final h = DateTime.now().hour;
+  final h = clock().hour;
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';

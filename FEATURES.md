@@ -3,7 +3,7 @@
 Working checklist for what's built, what's broken, and what's next. Tick a box
 when it ships. Keep entries one line; the reasoning lives in the code comments.
 
-**Status:** 20 source files · 7,419 lines · 181 tests · 29 goldens · 6 runtime deps
+**Status:** 23 source files · 10,093 lines · 207 tests · 36 goldens · 6 runtime deps
 **Verified on:** Android device — runs, emoji render, data survives a cold kill
 **Last release:** 1.0.0 — arm64 17.9 MB, release-signed (`5D:77:3C:62…75BD99`)
 **Current build:** arm64 **18.6 MB** — +0.7 MB for Lucide (see below)
@@ -36,6 +36,15 @@ plugin code that is all reachable. Not worth the reflection risk for nothing.
 ---
 
 ## Design decisions — settled, don't re-litigate
+
+- **The clock is injected, in one place.** `lib/clock.dart` holds
+  `DateTime Function() clock = DateTime.now`, and `today()` and `greeting()`
+  are its only callers. Production never reassigns it. Without it every golden
+  that renders a date — which is nearly all of them, between the grid's month
+  ruler, the weekday column it starts on, and "Good morning" — drifts as the
+  calendar moves, and the suite ends up failing on its own. That is how a
+  regression net quietly stops being one: 21 goldens had already gone red and
+  the failures read as noise rather than as signal.
 
 - **Storage** is one JSON blob in `shared_preferences`. Revisit only when
   measurement says so, around two years of daily data. Not before.
@@ -455,22 +464,47 @@ The original five are cleared. The redesign opened one.
 ## Commands
 
 ```sh
-flutter test                                  # 181 tests
+flutter test                                  # 207 tests
 flutter test --update-goldens                 # after any visual change
 flutter analyze
 flutter build apk --release --split-per-abi \
   --obfuscate --split-debug-info=symbols/1.0.0   # arm64 is the one to ship
 ```
 
-Launcher icons are generated, not tracked by hand. After changing
-`assets/icon/app_icon.png`, run `dart run flutter_launcher_icons` **and**
-regenerate `assets/splash/wick_mark.png` from it, or the mipmaps and the
-Flutter launch frame silently keep the old art. Keep that source **RGBA, not
-palette-mode**: the generator throws `RangeError` on an indexed PNG, and it
-fails only on the iOS step, so Android looks like it worked.
+Launcher icons are generated, not tracked by hand:
 
-Full-size mascot originals live in `art/mascot-source/` — outside `assets/`, so
-they are not bundled. `assets/mascot/` holds the 512 px versions the app ships.
+```sh
+python3 tool/make_icon.py      # both framings from art/mascot-source/
+dart run flutter_launcher_icons
+```
+
+**One file cannot serve both platforms.** An Android adaptive icon only
+guarantees the centre 2/3 of its foreground survives the launcher's mask; iOS
+shows the whole square. The same crop framed for one is visibly wrong on the
+other, which is why `image_path` and `adaptive_icon_foreground` point at
+different files. `make_icon.py` cuts both from `icon_source.png`: the iOS one
+flattened onto the cream ground, the Android one scaled by width and
+bottom-aligned so the candle's cut edge runs off the canvas where the mask
+hides it. Centring it instead leaves the cut floating mid-frame, which reads as
+a sticker torn in half.
+
+The icon is a **crop** — breathing room above the flame, body bleeding off the
+bottom. A whole small candle floating in the frame reads as a smudge at
+launcher size; a cropped one reads as a face. The **splash mark keeps the whole
+candle** for the opposite reason: a crop that bleeds off its frame reads as cut
+off when it floats on a splash screen with nothing beneath it. So the two come
+from different sources — `icon_source.png` and `mark_source.png`.
+
+Keep `assets/icon/app_icon.png` **RGBA or RGB, never palette-mode**: the
+generator throws `RangeError` on an indexed PNG, and it fails only on the iOS
+step, so Android looks like it worked.
+
+Full-size originals live in `art/` — outside `assets/`, so they are not bundled:
+`art/mascot-source/` for the poses and both icon sources, `art/character-sheet.png`
+for the reference sheet. `assets/mascot/` holds the 512 px versions the app
+ships. Those and `assets/splash/wick_mark.png` were derived once by hand;
+`make_icon.py` leaves them alone unless passed `--poses` or `--splash`, because
+re-deriving them rewrites bytes and moves goldens for no visible gain.
 
 Symbols go to `symbols/<version>/`, not under `build/` — `flutter clean` would
 take them, and without them an obfuscated stack trace cannot be read.

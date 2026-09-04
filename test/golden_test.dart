@@ -13,6 +13,7 @@ import 'package:habit_tracker/main.dart';
 import 'package:habit_tracker/onboarding.dart';
 import 'package:habit_tracker/settings.dart';
 import 'package:habit_tracker/share_card.dart';
+import 'package:habit_tracker/clock.dart';
 import 'package:habit_tracker/store.dart';
 import 'package:habit_tracker/templates.dart';
 import 'package:habit_tracker/theme.dart';
@@ -101,16 +102,28 @@ Widget app(Widget home, {required bool dark}) => MaterialApp(
       home: home,
     );
 
+
+/// Mid-month, mid-morning, on a fixed weekday.
+///
+/// Every one of these screens renders a date or a greeting: the contribution
+/// grid's month ruler, the weekday column it starts on, "Good morning". With
+/// the real clock the images drift as the calendar moves and the whole suite
+/// starts failing on its own, which is how a regression net stops being one.
+final _pinned = DateTime(2026, 9, 17, 10, 30);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(loadFonts);
 
+  late DateTime Function() previousClock;
   setUp(() {
+    previousClock = useFixedClock(_pinned);
     TestWidgetsFlutterBinding.instance.platformDispatcher.views.first
       ..physicalSize = const Size(860, 1800)
       ..devicePixelRatio = 2.0;
   });
+  tearDown(() => clock = previousClock);
 
   testWidgets('home — light', (tester) async {
     final store = await seeded();

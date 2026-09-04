@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'clock.dart';
 import 'icons.dart';
 import 'theme.dart';
 
@@ -34,7 +35,7 @@ DateTime shiftDays(DateTime d, int by) => DateTime(d.year, d.month, d.day + by);
 DateTime startOfWeek(DateTime d) => shiftDays(d, -(d.weekday - 1));
 
 DateTime today() {
-  final n = DateTime.now();
+  final n = clock();
   return DateTime(n.year, n.month, n.day);
 }
 
